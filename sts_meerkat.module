@@ -1,0 +1,68 @@
+<?php
+// $Id:  sts_meerkat module Exp $
+
+// keep the module name consistent throughout
+global $moduleName;
+$moduleName = "sts_meerkat";
+
+// call menu hook to create an administration menu to create content for your module
+function sts_meerkat_menu() {
+global $moduleName;
+  $items = array();
+  $items['admin/settings/'.$moduleName] = array(
+    'title' => ucfirst($moduleName),
+    'description' => 'Set '.$moduleName.' code',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array($moduleName.'_admin'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+   );
+  return $items;
+}
+
+// call admin hook to let you administrate the content of this block
+function sts_meerkat_admin() {
+global $moduleName;
+  $form = array();
+    $form[$moduleName.'_show_title'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show title'),
+    '#default_value' => variable_get($moduleName.'_show_title', '1'),
+    '#required' => TRUE,
+  );
+  $form[$moduleName.'_number'] = array(
+    '#type' => 'textfield',
+    '#title' => t('How many blocks'),
+    '#default_value' => variable_get($moduleName.'_number', '1'),
+    '#maxlength' => 3,
+    '#required' => TRUE,
+  );
+  $n = (int)variable_get($moduleName.'_number',1);
+  for( $i=1;$i<$n+1;$i++ ) {
+    ($i<2) ? $setreq = TRUE : $setreq = FALSE;
+   $form[$moduleName.'_'.$i] = array(
+  '#type' => 'textarea',
+  '#title' => t(ucfirst($moduleName).' Block '.($i)),
+  '#default_value' => variable_get($moduleName.'_'.$i, ''),
+  '#maxlength' => 800,
+  '#required' => $setreq,
+  );
+  }
+  return system_settings_form($form);
+}
+
+// call block hook and show in Drupal block the you assign
+function sts_meerkat_block($op = 'list', $delta = 0) {
+global $moduleName;
+  $block = array();
+  if($op == 'list') {
+    for($i=1;$i<variable_get($moduleName.'_number', '1')+1;$i++) {
+      $block[$i]["info"] = t(ucfirst($moduleName).($i));
+    }
+  } else if ($op == 'view') {
+    if (variable_get($moduleName.'_show_title', '1')==true)
+      $block['subject'] = ucfirst($moduleName);
+    $block['content'] = variable_get($moduleName.'_'.$delta, '');
+  }
+return $block;
+} 
