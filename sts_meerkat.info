@@ -3,3 +3,7 @@ name = STScode Meerkat
 description = Adds a block that makes it easy to use the meerkat (http://meerkat.jarodtaylor.com/) 
 core = 6.x
 package = STScode
+
+dependencies[] = libraries
+dependencies[] = ctools
+dependencies[] = jquery_update

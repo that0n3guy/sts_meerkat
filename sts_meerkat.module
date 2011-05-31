@@ -239,7 +239,7 @@ function meerkat_build($config) {
   else {
     $data['subject'] = '';
   }
-  if (isset($_SESSION['meerkat'][$config['delta']]) && $_SESSION['meerkat'][$config['delta']] == $config['delta']) {
+  if ($config['session_close'] && isset($_SESSION['meerkat'][$config['delta']]) && $_SESSION['meerkat'][$config['delta']] == $config['delta']) {
     $data['content'] = '';
   }
   else {  
