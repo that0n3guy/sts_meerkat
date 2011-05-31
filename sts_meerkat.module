@@ -1,49 +1,80 @@
 <?php
 // $Id:  sts_meerkat module Exp $
 
-// keep the module name consistent throughout
-global $moduleName;
-$moduleName = "sts_meerkat";
-
-// call menu hook to create an administration menu to create content for your module
+/**
+ * Implements hook_menu().
+ */
 function sts_meerkat_menu() {
-global $moduleName;
   $items = array();
-  $items['admin/settings/'.$moduleName] = array(
-    'title' => ucfirst($moduleName),
-    'description' => 'Set '.$moduleName.' code',
+  $items['admin/build/block/add-meerkat-block'] = array(
+    'title' => 'Add meerkat block',
+    'description' => 'Add a new meerkat block.',
+    'access arguments' => array('administer blocks'),
     'page callback' => 'drupal_get_form',
-    'page arguments' => array($moduleName.'_admin'),
-    'access arguments' => array('access administration pages'),
+    'page arguments' => array('sts_meerkat_add_block_form'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => "sts_meerkat.admin.inc",
+  );
+  $items['admin/build/block/delete-meerkat-block'] = array(
+    'title' => 'Delete menu block',
+    'access arguments' => array('administer blocks'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('sts_meerkat_delete'),
+    'type' => MENU_CALLBACK,
+    'file' => "sts_meerkat.admin.inc",
+  );
+  $items['admin/settings/sts_meerkat'] = array(
+    'title' => 'STScode Meerkat',
+    'description' => 'Configure meerkat block.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('sts_meerkat_admin_settings_form'),
+    'access arguments' => array('administer blocks'),
     'type' => MENU_NORMAL_ITEM,
-   );
+    'file' => "sts_meerkat.admin.inc",
+  );
+  $items['meerkat/hide-meerkat-session'] = array(
+    'title' => 'Hide Meerkat block for this session',
+    'access arguments' => array('access content'),
+    //'page callback' => 'drupal_get_form',
+    'page callback' => '_meerkat_hide_session',
+    //'page arguments' => array('sts_meerkat_delete'),
+    'type' => MENU_CALLBACK,
+    //'file' => "sts_meerkat.admin.inc",
+  );
   return $items;
+}
+
+/**
+ * Alters the block admin form to add delete links next to meerkat blocks.
+ */
+function sts_meerkat_form_block_admin_display_form_alter(&$form, $form_state) {
+  module_load_include('inc', 'sts_meerkat', 'sts_meerkat.admin');
+  _sts_meerkat_form_block_admin_display_form_alter($form, $form_state);
 }
 
 // call admin hook to let you administrate the content of this block
 function sts_meerkat_admin() {
-global $moduleName;
   $form = array();
-    $form[$moduleName.'_show_title'] = array(
+    $form[sts_meerkat.'_show_title'] = array(
     '#type' => 'checkbox',
     '#title' => t('Show title'),
-    '#default_value' => variable_get($moduleName.'_show_title', '1'),
+    '#default_value' => variable_get(sts_meerkat.'_show_title', '1'),
     '#required' => TRUE,
   );
-  $form[$moduleName.'_number'] = array(
+  $form[sts_meerkat.'_number'] = array(
     '#type' => 'textfield',
     '#title' => t('How many blocks'),
-    '#default_value' => variable_get($moduleName.'_number', '1'),
+    '#default_value' => variable_get(sts_meerkat.'_number', '1'),
     '#maxlength' => 3,
     '#required' => TRUE,
   );
-  $n = (int)variable_get($moduleName.'_number',1);
+  $n = (int)variable_get(sts_meerkat.'_number',1);
   for( $i=1;$i<$n+1;$i++ ) {
     ($i<2) ? $setreq = TRUE : $setreq = FALSE;
-   $form[$moduleName.'_'.$i] = array(
+   $form[sts_meerkat.'_'.$i] = array(
   '#type' => 'textarea',
-  '#title' => t(ucfirst($moduleName).' Block '.($i)),
-  '#default_value' => variable_get($moduleName.'_'.$i, ''),
+  '#title' => t(ucfirst(sts_meerkat).' Block '.($i)),
+  '#default_value' => variable_get(sts_meerkat.'_'.$i, ''),
   '#maxlength' => 800,
   '#required' => $setreq,
   );
@@ -52,17 +83,302 @@ global $moduleName;
 }
 
 // call block hook and show in Drupal block the you assign
+/*
 function sts_meerkat_block($op = 'list', $delta = 0) {
-global $moduleName;
   $block = array();
   if($op == 'list') {
-    for($i=1;$i<variable_get($moduleName.'_number', '1')+1;$i++) {
-      $block[$i]["info"] = t(ucfirst($moduleName).($i));
+    for($i=1;$i<variable_get(sts_meerkat.'_number', '1')+1;$i++) {
+      $block[$i]["info"] = t(ucfirst(sts_meerkat).($i));
     }
   } else if ($op == 'view') {
-    if (variable_get($moduleName.'_show_title', '1')==true)
-      $block['subject'] = ucfirst($moduleName);
-    $block['content'] = variable_get($moduleName.'_'.$delta, '');
+    if (variable_get(sts_meerkat.'_show_title', '1')==true)
+      $block['subject'] = ucfirst(sts_meerkat);
+    $block['content'] = variable_get(sts_meerkat.'_'.$delta, '');
   }
 return $block;
 } 
+*/
+
+/**
+ * Implements hook_block().
+ */
+function sts_meerkat_block($op = 'list', $delta = NULL, $edit = NULL) {
+  $function = '_sts_meerkat_block_' . $op;
+  if (function_exists($function)) {
+    return $function($delta, $edit);
+  }
+  else {
+    // "op"s besides "view" are seldom used, so we store them in a separate file.
+    module_load_include('inc', 'sts_meerkat', 'sts_meerkat.admin');
+    if (function_exists($function)) {
+      return $function($delta, $edit);
+    }
+  }
+}
+
+/**
+ * Returns the configuration for the requested block delta.
+ *
+ * @param $delta
+ *   string The delta that uniquely identifies the block in the block system. If
+ *   not specified, the default configuration will be returned.
+ * @return
+ *   array An associated array of configuration options.
+ */
+function sts_meerkat_get_config($delta = NULL) {
+  $config = array(
+
+    'delta'       => $delta,
+    'admin_title' => '',
+    'title' => '',
+    'block_content' => _meerkat_block_content(),
+    'meerkat_settings' => _meerkat_settings(),
+    'format' => FILTER_FORMAT_DEFAULT,
+    'css' => _meerkat_css(),
+    'session_close' => '',
+    'session_selector' => '.meerkat-hide',
+
+  /* Maybe later
+    "background" => 'none',
+    "opacity" => 'null',
+    "height" => 'auto',
+    "width" =>'100%',
+    "position" => 'bottom',
+    "close" => '.hide',
+    "dontShowAgain" => '#dont-show',
+    "cookieExpires" => 0,
+    "removeCookie" => '.removeCookie',
+    "animationIn" => 'slide',
+    "animationOut" => 'slide',
+    "animationSpeed" => 'normal'
+    "delay" => 0
+    "timer" => 'null'
+    "dontShowAgainAuto" => 'false'
+    "onMeerkatShow" => ''
+    "easingIn" => 'swing'
+    "easingOut" => 'swing'
+  */
+  );
+
+  // Get the block configuration options.
+  if ($delta) {
+    $config['admin_title'] = variable_get("sts_meerkat_{$delta}_admin_title", $config['admin_title']);
+    $config['block_content']        = variable_get("sts_meerkat_{$delta}_block_content",        $config['block_content']);
+    $config['meerkat_settings']        = variable_get("sts_meerkat_{$delta}_meerkat_settings",        $config['meerkat_settings']);
+    $config['format']        = variable_get("sts_meerkat_{$delta}_format",        $config['format']);
+    $config['title']        = variable_get("sts_meerkat_{$delta}_title",        $config['title']);
+    $config['css']        = variable_get("sts_meerkat_{$delta}_css",        $config['css']);
+    $config['session_close']        = variable_get("sts_meerkat_{$delta}_session_close",        $config['session_close']);
+    $config['session_selector']        = variable_get("sts_meerkat_{$delta}_session_selector",        $config['session_selector']);
+
+  /* Maybe later
+    $config['background']    = variable_get("sts_meerkat_{$delta}_background",    $config['background']);
+    $config['opacity']    = variable_get("sts_meerkat_{$delta}_opacity",    $config['opacity']);
+    $config['height']    = variable_get("sts_meerkat_{$delta}_height",    $config['height']);
+    $config['width']    = variable_get("sts_meerkat_{$delta}_width",    $config['width']);
+    $config['position']    = variable_get("sts_meerkat_{$delta}_position",    $config['position']);
+    $config['close']    = variable_get("sts_meerkat_{$delta}_close",    $config['close']);
+    $config['dontShowAgain']    = variable_get("sts_meerkat_{$delta}_dontShowAgain",    $config['dontShowAgain']);
+    $config['cookieExpires']    = variable_get("sts_meerkat_{$delta}_cookieExpires",    $config['cookieExpires']);
+    $config['removeCookie']    = variable_get("sts_meerkat_{$delta}_removeCookie",    $config['removeCookie']);
+    $config['animationIn']    = variable_get("sts_meerkat_{$delta}_animationIn",    $config['animationIn']);
+    $config['animationOut']    = variable_get("sts_meerkat_{$delta}_animationOut",    $config['animationOut']);
+    $config['animationSpeed']    = variable_get("sts_meerkat_{$delta}_animationSpeed",    $config['animationSpeed']);
+    $config['delay']    = variable_get("sts_meerkat_{$delta}_delay",    $config['delay']);
+    $config['timer']    = variable_get("sts_meerkat_{$delta}_timer",    $config['timer']);
+    $config['dontShowAgainAuto']    = variable_get("sts_meerkat_{$delta}_dontShowAgainAuto",    $config['dontShowAgainAuto']);
+    $config['onMeerkatShow']    = variable_get("sts_meerkat_{$delta}_onMeerkatShow",    $config['onMeerkatShow']);
+    $config['easingIn']    = variable_get("sts_meerkat_{$delta}_easingIn",    $config['easingIn']);
+    $config['easingOut']    = variable_get("sts_meerkat_{$delta}_easingOut",    $config['easingOut']);
+  */
+  }
+
+  return $config;
+}
+
+/**
+ * Returns the 'view' $op info for hook_block().
+ *
+ * @param $delta
+ *   string The name of the block to render.
+ */
+function _sts_meerkat_block_view($delta) {
+  return meerkat_build(sts_meerkat_get_config($delta));
+}
+
+
+/**
+ * Build the meerkat html based on the provided configuration.
+ *
+ * @param $config
+ *   array An array of configuration options that specifies how to build the
+ *   menu tree and its title.
+ *   - delta: (string) The menu_block's block delta.
+ *   - admin_title: (string) An optional title to uniquely identify the block on
+ *     the administer blocks page.
+ * @return
+ *   array An array containing the rendered tree in the 'content' key and the
+ *   rendered title in the 'subject' key.
+ */
+function meerkat_build($config) {
+  if ($path = libraries_get_path('jquery.meerkat')) {
+    // Do something with the library, knowing the path, for instance:
+    drupal_add_js($path . '/jquery.meerkat.1.3.min.js', 'header');
+    //drupal_add_js("$(document).ready(function(){ $('#meerkat').meerkat ({" . $config['meerkat_settings'] . '}); });', 'inline');
+    if($config['session_close']) {
+      drupal_add_js(_meerkat_js_session($config), 'inline');
+    }
+    else {
+      drupal_add_js(_meerkat_js($config), 'inline');   
+    }
+  }
+
+  if ($config['title'] != '<none>') {
+   $data['subject'] = check_plain($config['title']);
+  }
+  else {
+    $data['subject'] = '';
+  }
+  if (isset($_SESSION['meerkat'][$config['delta']]) && $_SESSION['meerkat'][$config['delta']] == $config['delta']) {
+    $data['content'] = '';
+  }
+  else {  
+    $data['content'] = _meerkat_content($config);
+  }
+  return $data;
+}
+
+
+
+//set the content to be desplayed for the block
+function _meerkat_content($config) {
+  $content = check_markup($config['block_content'], $config['format'], FALSE);
+  $css = check_plain($config['css']);
+  $data = <<<EOD
+    <style>
+      $css
+    </style>
+    <div id="meerkat">
+     $content
+   </div></div>
+EOD;
+
+return $data;
+
+}
+
+//javascript to add and set session on close
+function _meerkat_js_session($config) {
+  $mset = $config['meerkat_settings'];
+  $delta = $config['delta'];
+  $url = url($path = '/meerkat/hide-meerkat-session', array('absolute' => TRUE));
+  $cssselector = $config['session_selector'];
+  $settings = <<<EOD
+    $(document).ready(function(){
+      $('#meerkat').meerkat ({
+        $mset 
+      });
+
+      $('$cssselector').click(function() {
+        $.ajax ({
+          url: "$url",
+          data: "blockdelta=$delta",
+        });
+      });
+    });
+EOD;
+
+  return $settings;
+}
+
+//javascript to add and set session on close
+function _meerkat_js($config) {
+  $mset = $config['meerkat_settings']; 
+
+  $settings = <<<EOD
+    $(document).ready(function(){
+      $('#meerkat').meerkat ({
+        $mset
+      });
+    });
+EOD;
+
+  return $settings;
+}
+
+
+//The default css
+function _meerkat_css() {
+  $settings = <<<EOD
+    #meerkat-wrap {
+      left: 0;
+    }
+    #meerkat-container {
+    }
+    #meerkat {
+     width: 960px;
+     margin: 0 auto;
+     padding-top: 10px;
+     padding-bottom: 10px;
+    }
+    .meerkat-hide {
+      float:right;
+      cursor: pointer;
+    }
+    #meerkat-dont-show {
+      float:right;
+      cursor: pointer;
+    } 
+    .meerkat-removecookie {
+      float:right;
+      cursor: pointer;
+    }
+EOD;
+
+  return $settings;
+}
+
+//The default block content
+function _meerkat_block_content () {
+  $settings = <<<EOD
+<div class="meerkat-hide"><a href="#"><img src="http://openiconlibrary.sourceforge.net/gallery2/open_icon_library-full/icons/png/48x48/actions/window-close.png" alt="Close Me" width="48" height="48"></a></div>
+
+<h1 class="title">Put your title here</h1>
+
+<p>Put Your Content Here.  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis in dolor turpis. Maecenas rhoncus luctus consequat. Pellentesque cursus orci quis nibh consequat a condimentum ante dignissim. Proin accumsan urna sit amet sem tempus fermentum. In hac habitasse platea dictumst. Mauris volutpat elit iaculis tellus viverra bibendum. Praesent est tellus, iaculis in bibendum quis, pulvinar ut diam. Nunc dignissim ullamcorper lacus eu condimentum. Nunc pellentesque adipiscing sapien, ut dignissim nunc cursus sed. Donec lobortis tincidunt arcu, a porta orci tincidunt eu.</p> 
+
+<div id="meerkat-dont-show"><a href="#"Don't Show Again</a></div>
+EOD;
+ 
+  return $settings;
+}
+
+
+//the default settings
+function _meerkat_settings() {
+  $settings = <<<EOD
+    showMeerkatOnLoad: 'TRUE',
+    background: '#000',
+    opacity: null,
+    height: 'auto',
+    width:'100%',
+    position: 'bottom',
+    close: '.meerkat-hide',
+    dontShowAgain: '#meerkat-dont-show',
+    cookieExpires: 0,
+    removeCookie: '.meerkat-removecookie',
+    animationIn: 'slide',
+    animationOut: 'slide',
+    animationSpeed: 'normal',
+    delay: 0,
+    timer: null,
+    dontShowAgainAuto: 'false',
+EOD;
+
+  return $settings;
+}
+
+//function for setting a session variable to hide the block.
+function _meerkat_hide_session () {
+  $_SESSION['meerkat'][$_GET['blockdelta']] = TRUE;
+}
