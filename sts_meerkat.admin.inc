@@ -217,7 +217,7 @@ function sts_meerkat_configure_form(&$form_state) {
     '#type' => 'textfield',
     '#default_value' => $config['session_selector'],
     '#title' => t('Session CSS Selector'),
-    '#description' => t('The css selector to be used to set the meerkat popup from showing, only for this drupal session.  Commonly used with "hide" instead of using the "dontshow" meerkat option.'),
+    '#description' => t('The css selector to be used to set the meerkat popup from showing, only for this drupal session.  Commonly used with "hide" instead of using the "dontshow" meerkat option.  <strong>WARNING: This is added directly to the javascript on the page and could be used maliciously, be careful who you give "administer blocks" permissions.</strong>'),
     '#required' => TRUE,
    // 2. This ensures that the element will be processed by ctools dependent
    '#process' => array('ctools_dependent_process'),
@@ -231,51 +231,19 @@ function sts_meerkat_configure_form(&$form_state) {
     '#type' => 'textarea',
     '#title' => t('Meerkat settings'),
     '#default_value' => $config['meerkat_settings'],
+    '#description' => t('Go checkout <a href="http://meerkat.jarodtaylor.com/documentation/">this site</a> for all the options. <br/><strong>WARNING: This is added directly to the javascript on the page and could be used maliciously, be careful who you give "administer blocks" permissions.</strong>'),
     '#required' => TRUE
   );
   $form['meerkat_css'] = array(
     '#type' => 'textarea',
     '#title' => t('Meerkat CSS'),
     '#default_value' => $config['css'],
+    '#description' => t('This is printed between "style" tags directly to the page.  Becareful what you put here.'),
     '#required' => TRUE
   );
 
   return $form;
 }
-
-
-
-
-
-
-
-/**
- * Validates the parent element of the block configuration form.
- */
-/*
-function menu_block_configure_form_parent_validate($element, &$form_state) {
-  // The "Menu block" config has the "parent" value split into "menu_name" and
-  // "parent_mlid" values. The value of "parent" stored in the database/config array is either FALSE
-  list($form_state['values']['menu_name'], $form_state['values']['parent_mlid']) = explode(':', $form_state['values']['parent']);
-}
-*/
-
-/**
- * Validates the follow element of the block configuration form.
- */
-/*
-function menu_block_configure_form_follow_validate($element, &$form_state) {
-  // The value of "follow" stored in the database/config array is either FALSE
-  // or the value of the "follow_parent" form element.
-  if ($form_state['values']['follow'] && !empty($form_state['values']['follow_parent'])) {
-    $form_state['values']['follow'] = $form_state['values']['follow_parent'];
-  }
-}
-*/
-
-
-
-
 
 
 /**
@@ -327,18 +295,20 @@ function sts_meerkat_admin_settings_form($form_state) {
 ///////////////////put in location of jquery library.
 if ($path = libraries_get_path(jquery.meerkat)) {
   // great... your library is set in the right place
-
 }
 else {
   //you need to put the library in the right place.
 }
+  $form['this'] = array(
+    '#value' => t('This page is a placeholder for later use.  It does nothing for now.<br/><br/>'),
+  );
 
 
 // instructions on how to add a block... links
 
   $form['submit'] = array(
     '#type' => 'submit',
-    '#value' => t('Save configuration'),
+    '#value' => t('This button does nothing'),
   );
 
   return $form;
